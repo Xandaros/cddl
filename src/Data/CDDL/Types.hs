@@ -12,8 +12,10 @@ type Typename = Identifier
 type Groupname = Identifier
 
 data CDDL = CDDL Typename Rules
+    deriving (Show)
 
 data Rules = Rules (Map.Map Typename Type) (Map.Map Groupname Group)
+    deriving (Show)
 -- Semigroup
 
 data Type = LiteralType Literal
@@ -25,15 +27,18 @@ data Type = LiteralType Literal
           | RawType Int Int
           | TaggedType Int Type
           | AnyType
+          deriving (Show)
         -- One possible Monoid instances - good idea?
 
 data Group = GroupProduct (NonEmpty Group)
            | GroupChoice (NonEmpty Group)
            | GroupReference Groupname
+           deriving (Show)
         -- Two possible Monoid instances - no Monoid
 
 data Literal = NumberLiteral Double
              | StringLiteral Text.Text
+             deriving (Show)
 
 
 -- TODO: Add special cases where grp1 or grp2 ere GroupChoice/GroupProduct
