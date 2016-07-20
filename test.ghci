@@ -1,0 +1,9 @@
+import Text.ABNF
+abnfFile <- Data.Text.IO.readFile "cddl.abnf"
+Right rules = parseABNF "cddl.abnf" abnfFile
+Just rule = canonicalizeRules "cddl" rules
+
+cddlFile <- Data.Text.IO.readFile "test.cddl"
+Right doc = parseDocument rule cddlFile
+
+import Lens.Micro
