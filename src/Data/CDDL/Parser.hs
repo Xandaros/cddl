@@ -15,14 +15,16 @@ import Text.ABNF.ABNF
 import Text.ABNF.Document
 import Data.CDDL.Types
 
+import Lens.Micro
+
 import Debug.Trace
 
 parseCDDL :: Text.Text -> ExceptT String IO CDDL
 parseCDDL cddl = do
     abnf  <- liftIO $ Text.readFile "cddl.abnf"
     abnf' <- case parseABNF "cddl.abnf" abnf of
-               Left msg -> liftIO $ putStrLn (parseErrorPretty msg)
-                           >> exitFailure
+               Left msg -> liftIO $ do putStrLn (parseErrorPretty msg)
+                                       exitFailure
                Right rules -> pure rules
     canon <- tryJust "could not canonicalise cddl.abnf"
              (canonicalizeRules "cddl" abnf')
@@ -36,17 +38,12 @@ class FromDocument b a | a -> b where
 
 instance FromDocument Text.Text CDDL where
     fromDocument doc@(Document "cddl" _) = do
-        firstRule <- headErr "No rule found" $ lookupDocument' "rule" doc
-        typeName  <- headErr "First rule cannot be a group" $ lookupDocument' "typename" firstRule
-        ruleName  <- headErr "Malformed CDDL" $ lookupDocument' "id" typeName
+        firstRule <- justErr "No rule found" $ doc ^? child "rule"
+        typeName  <- justErr "First rule cannot be a group" $ firstRule ^? child "typename"
+        ruleName  <- justErr "Malformed CDDL" $ typeName ^? child "id"
         traceM (Text.unpack $ getContent ruleName)
         CDDL (getContent ruleName) <$> fromDocument doc
     fromDocument _ = Left "Malformed CDDL"
 
 instance FromDocument Text.Text Rules where
     fromDocument _ = Left "niy"
-
-runNonTerminal :: Document a -> Either String (Document a)
-runNonTerminal (Terminal _) = Left ""
-runNonTerminal doc@(Document _ _) = Right doc
-

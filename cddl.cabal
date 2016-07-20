@@ -26,6 +26,7 @@ library
                        transformers,
                        mtl,
                        parsec,
+                       microlens,
                        semigroups,
                        containers,
                        text,
