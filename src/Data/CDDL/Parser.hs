@@ -49,5 +49,6 @@ instance FromDocument Text.Text CDDL where
 instance FromDocument Text.Text Rules where
     fromDocument _ = Left "niy"
 
+child :: Applicative f => Text.Text -> (Document a -> f (Document a)) -> Document a -> f (Document a)
 child a f s@(Document x _) = if a == x then f s else pure s
 child _ _ s = pure s
