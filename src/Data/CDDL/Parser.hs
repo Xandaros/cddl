@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE LambdaCase #-}
+
 module Data.CDDL.Parser where
 
 import qualified Data.Text as Text
@@ -8,7 +10,7 @@ import qualified Data.Text.IO as Text
 
 import Control.Error
 import Control.Monad.Trans (liftIO)
-import Text.Megaparsec.Error (parseErrorPretty)
+import Text.Megaparsec.Error (errorBundlePretty)
 import System.Exit (exitFailure)
 
 import Text.ABNF.ABNF
@@ -23,7 +25,7 @@ parseCDDL :: Text.Text -> ExceptT String IO CDDL
 parseCDDL cddl = do
     abnf  <- liftIO $ Text.readFile "cddl.abnf"
     abnf' <- case parseABNF "cddl.abnf" abnf of
-               Left msg -> liftIO $ do putStrLn (parseErrorPretty msg)
+               Left msg -> liftIO $ do putStrLn (errorBundlePretty msg)
                                        exitFailure
                Right rules -> pure rules
     canon <- tryJust "could not canonicalise cddl.abnf"
@@ -31,7 +33,6 @@ parseCDDL cddl = do
     doc   <- tryRight $ parseDocument canon cddl
     liftIO $ print doc
     tryRight $ fromDocument doc
-
 
 class FromDocument b a | a -> b where
     fromDocument :: Document b -> Either String a
@@ -47,3 +48,6 @@ instance FromDocument Text.Text CDDL where
 
 instance FromDocument Text.Text Rules where
     fromDocument _ = Left "niy"
+
+child a f s@(Document x _) = if a == x then f s else pure s
+child _ _ s = pure s

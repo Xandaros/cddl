@@ -1,15 +1,19 @@
 {-# LANGUAGE FlexibleInstances #-}
+
 module Data.CDDL.Types where
 
 import Data.List.NonEmpty
 import qualified Data.Map as Map
 import qualified Data.Text as Text
-import Data.Semigroup
 
 type Identifier = Text.Text
 
 type Typename = Identifier
 type Groupname = Identifier
+
+newtype SumGroup = SumGroup Group
+
+newtype ProductGroup = ProductGroup Group
 
 data CDDL = CDDL Typename Rules
     deriving (Show)
@@ -42,8 +46,8 @@ data Literal = NumberLiteral Double
 
 
 -- TODO: Add special cases where grp1 or grp2 ere GroupChoice/GroupProduct
-instance Semigroup (Sum Group) where
-    (Sum grp1) <> (Sum grp2) = Sum $ GroupChoice (grp1 :| [grp2])
+instance Semigroup (SumGroup) where
+  (SumGroup grp1) <> (SumGroup grp2) = SumGroup $ GroupChoice (grp1 :| [grp2])
 
-instance Semigroup (Product Group) where
-    (Product grp1) <> (Product grp2) = Product $ GroupProduct (grp1 :| [grp2])
+instance Semigroup (ProductGroup) where
+  (ProductGroup grp1) <> (ProductGroup grp2) = ProductGroup $ GroupProduct (grp1 :| [grp2])

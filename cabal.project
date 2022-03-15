@@ -1,0 +1,6 @@
+packages: .
+
+source-repository-package
+  type: git
+  location: https://github.com/goolord/abnf.git
+  tag: 08a0dd0ee196d184f4b22a27f1fc01770d499ccb
