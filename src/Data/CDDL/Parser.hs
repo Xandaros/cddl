@@ -1,15 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Data.CDDL.Parser where
 
 import qualified Data.Text as Text
-import qualified Data.Text.IO as Text
+import qualified Data.Text.Encoding as Text
 
 import Control.Error
-import Control.Monad.Trans (liftIO)
-import Text.Megaparsec.Error (parseErrorPretty)
-import System.Exit (exitFailure)
+import Text.Megaparsec.Error (errorBundlePretty)
+import Data.FileEmbed
 
 import Text.ABNF.ABNF
 import Text.ABNF.Document
@@ -17,21 +19,16 @@ import Data.CDDL.Types
 
 import Lens.Micro
 
-import Debug.Trace
+cddlAbnf :: Rule
+cddlAbnf = case parseABNF "cddl.abnf" (Text.decodeUtf8 $(embedFile "cddl.abnf")) of
+  Left msg -> error ("cddlAbnf: failed to parse cddl.abnf.\n" <> errorBundlePretty msg)
+  Right rules -> case canonicalizeRules "cddl" rules of
+    Nothing -> error "cddlAbnf: failed to canonicalize rules"
+    Just rules' -> rules'
 
-parseCDDL :: Text.Text -> ExceptT String IO CDDL
+parseCDDL :: Text.Text -> Either String CDDL
 parseCDDL cddl = do
-    abnf  <- liftIO $ Text.readFile "cddl.abnf"
-    abnf' <- case parseABNF "cddl.abnf" abnf of
-               Left msg -> liftIO $ do putStrLn (parseErrorPretty msg)
-                                       exitFailure
-               Right rules -> pure rules
-    canon <- tryJust "could not canonicalise cddl.abnf"
-             (canonicalizeRules "cddl" abnf')
-    doc   <- tryRight $ parseDocument canon cddl
-    liftIO $ print doc
-    tryRight $ fromDocument doc
-
+  fromDocument =<< parseDocument cddlAbnf cddl
 
 class FromDocument b a | a -> b where
     fromDocument :: Document b -> Either String a
@@ -41,9 +38,12 @@ instance FromDocument Text.Text CDDL where
         firstRule <- justErr "No rule found" $ doc ^? child "rule"
         typeName  <- justErr "First rule cannot be a group" $ firstRule ^? child "typename"
         ruleName  <- justErr "Malformed CDDL" $ typeName ^? child "id"
-        traceM (Text.unpack $ getContent ruleName)
         CDDL (getContent ruleName) <$> fromDocument doc
     fromDocument _ = Left "Malformed CDDL"
 
 instance FromDocument Text.Text Rules where
     fromDocument _ = Left "niy"
+
+child :: Applicative f => Text.Text -> (Document a -> f (Document a)) -> Document a -> f (Document a)
+child a f s@(Document x _) = if a == x then f s else pure s
+child _ _ s = pure s
